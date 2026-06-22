@@ -27,7 +27,57 @@ def loai_bo_dau_tieng_viet(chuoi_chu):
     bang_chuyen = str.maketrans(co_dau, khong_dau)
     return chuoi_chu.translate(bang_chuyen).lower()
 
-# Khai bao cac ham quan tri doc lap de chong loi le loi
+# ==========================================
+# KHAI BAO CAC HAM CHUC NANG (FLAT-FUNCTIONS CHONG LOI LE LOI)
+# ==========================================
+def hien_thi_canh_bao_het_han():
+    st.header("CANH BAO BAO QUAN SAN PHAM (DUOI 7 NGAY)")
+    thoi_gian_thuc = datetime.now()
+    co_canh_bao = False
+    
+    for item in st.session_state.kho_hang:
+        try:
+            ngay_hh_dt = datetime.strptime(item.get("ngay_hh", "2099-12-31"), "%Y-%m-%d")
+            days_left = (ngay_hh_dt - thoi_gian_thuc).days + 1
+            if days_left <= 7:
+                co_canh_bao = True
+                if days_left < 0:
+                    st.error(f"CANH BAO - DA QUA HAN {abs(days_left)} NGAY: {item['ten'].upper()} | Ke: {item['vi_tri']}")
+                else:
+                    st.warning(f"CANH BAO - SAP HET HAN (Con {days_left} ngay): {item['ten'].upper()} | Ke: {item['vi_tri']}")
+        except:
+            pass
+            
+    if not co_canh_bao:
+        st.success("He thong an toan. Tat ca vat lieu deu co han su dung an toan.")
+
+def xu_ly_tim_kiem_thong_minh():
+    st.markdown("### TIM KIEM THONG MINH (Go chu cai goi y rut xuong ngay lap tuc)")
+    with st.popover("BAM VAO DAY DE GO CHU CAI / XEM GOI Y ABC", use_container_width=True):
+        chu_cai_nhap = st.text_input("Go chu cai dau, ten hang hoac quet ma vach:", value="", key="inst_search").strip()
+        chu_cai_clean = loai_bo_dau_tieng_viet(chu_cai_nhap)
+        start_with = []
+        contain_with = []
+        for sp in st.session_state.kho_hang:
+            t_clean = loai_bo_dau_tieng_viet(sp["ten"])
+            m_clean = sp["ma_vach"].lower()
+            if chu_cai_clean in t_clean or chu_cai_clean in m_clean:
+                if t_clean.startswith(chu_cai_clean) or m_clean.startswith(chu_cai_clean):
+                    start_with.append(sp)
+                else:
+                    contain_with.append(sp)
+        start_with.sort(key=lambda x: x["ten"])
+        contain_with.sort(key=lambda x: x["ten"])
+        ket_qua_goi_y = start_with + contain_with
+        if chu_cai_nhap:
+            st.markdown(f"Goi y khop cho tu khoa '{chu_cai_nhap}':")
+        else:
+            st.markdown("Toan bo danh sach kho hang (Xep theo thu tu ABC):")
+        for item_goi_y in ket_qua_goi_y:
+            st.markdown(f"**Spham: {item_goi_y['ten'].upper()}**")
+            st.markdown(f"Vi tri ke: {item_goi_y['vi_tri']} | Ma vach: {item_goi_y['ma_vach']} | HSD: {item_goi_y['ngay_hh']}")
+            st.markdown("---")
+
 def xu_ly_nhap_kho():
     st.markdown("### MANAGEMENT ZONE (Khu vur quan tri danh cho Ban Quan Ly)")
     st.markdown("#### Nhap them vat tu hang hoa moi")
@@ -115,7 +165,9 @@ def xu_ly_duyet_nhan_su(role_now):
             st.success("Da phe duyet phan cap tai khoan thanh con!")
             st.rerun()
 
-# Khoi tao du lieu goc tai day
+# ==========================================
+# KHỞI TẠO CƠ SỞ DỮ LIỆU GỐC HỆ THỐNG
+# ==========================================
 if not os.path.exists(DB_FILE):
     du_lieu_goc = {
         "users": {"Zeroizerd": {"name": "Dong Sang Lap Zeroizerd", "password": "13723@", "active": True, "role": "1_creator"}},
@@ -138,57 +190,8 @@ if 'logged_in' not in st.session_state:
     st.session_state.current_user = None
 
 # ==========================================
-# 2. GIAO DIỆN ĐĂNG NHẬP
+# 2. GIAO DIỆN ĐĂNG NHẬP TRỰC QUAN
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<h2 style='text-align: center; color: #0088cc;'>HE THONG BAO MAT SMART-HUB HONG PHAT</h2>", unsafe_allow_html=True)
     col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        st.subheader("DANG NHAP")
-        u_in = st.text_input("Ten tai khoan:", key="u_in").strip()
-        p_in = st.text_input("Mat khau bao mat:", type="password", key="p_in")
-        if st.button("DANG NHAP SYSTEM", type="primary", use_container_width=True):
-            if u_in in st.session_state.users:
-                u_info = st.session_state.users[u_in]
-                if u_info["password"] == p_in:
-                    if u_info["active"]:
-                        st.session_state.logged_in = True
-                        st.session_state.current_user = u_in
-                        st.rerun()
-                    else: st.error("Tai khoan chua duoc kich hoat quyen!")
-                else: st.error("Mat khau khong chi'nh xac!")
-            else: st.error("Tai khoan khong ton tai!")
-    with col_l2:
-        st.subheader("DANG KY TAI KHOAN MOI")
-        r_user = st.text_input("Ten dang nhap moi (viet lien):", key="r_user").strip()
-        r_name = st.text_input("Ho va ten that nhan su:", key="r_name").strip()
-        r_pass = st.text_input("Tao mat khau truy cap:", type="password", key="r_pass")
-        if st.button("GUI YEU CAU DANG KY", use_container_width=True):
-            if not r_user or not r_name or not r_pass: st.error("Vui long dien day du thong tin!")
-            elif r_user in st.session_state.users: st.error("Ten tai khoan nay la da co nguoi su dung!")
-            else:
-                st.session_state.users[r_user] = {"name": r_name, "password": r_pass, "active": False, "role": "4_staff"}
-                luu_du_lieu_he_thong()
-                st.success("Dang ky thanh cong! Hay cho cap tren phe duyet.")
-
-# ==========================================
-# 3. DASHBOARD DIEU HANH CHINH THUC
-# ==========================================
-else:
-    u_now = st.session_state.users[st.session_state.current_user]
-    role_now = u_now["role"]
-    col_hd1, col_hd2 = st.columns(2)
-    with col_hd1:
-        st.markdown("<h2 style='color: #0088cc; margin:0;'>SMART-HUB DIEU HANH - HONG PHAT</h2>", unsafe_allow_html=True)
-        st.write(f"Nguoi truc: {u_now['name']} | Chuc vu: {ROLE_LABELS[role_now]}")
-    with col_hd2:
-        if st.button("DANG XUAT", type="secondary", use_container_width=True):
-            st.session_state.logged_in = False
-            st.session_state.current_user = None
-            st.rerun()
-    st.markdown("---")
-    
-    # CANH BAO BAO QUAN SAN PHAM HET HAN
-    co_canh_bao = False
-    for item in st.session_state.kho_hang:
-        try:
