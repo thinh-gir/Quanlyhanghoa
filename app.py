@@ -204,8 +204,10 @@ else:
             "✏️ Chỉnh sửa thông tin / Xóa bỏ vật tư"
         ])
         
-        # --- TAB 1: PHÊ DUYỆT TÀI KHOẢN (Creator điều hành 3 cấp, Boss điều hành 2 cấp, Admin điều hành Nhân viên) ---
+        # --- TAB 1: PHÊ DUYỆT TÀI KHOẢN ---
         with tab_nhan_su:
             st.subheader("Bảng danh sách nhân sự hiện thời")
             bang_hien_thi = []
             for tk, thong_tin_tk in st.session_state.users.items():
+                bang_hien_thi.append({
+                    "Tài khoản hệ thống": tk,
