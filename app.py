@@ -18,7 +18,6 @@ ROLE_LABELS = {
 }
 
 def luu_du_lieu_he_thong():
-    """Ghi đè đồng bộ dữ liệu từ bộ nhớ tạm vào tệp tin lưu trữ dữ liệu JSON"""
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump({
             "users": st.session_state.users,
@@ -26,13 +25,11 @@ def luu_du_lieu_he_thong():
         }, f, ensure_ascii=False, indent=4)
 
 def loai_bo_dau_tieng_viet(chuoi_chu):
-    """Hàm bổ trợ giúp tìm kiếm thông minh không cần gõ dấu"""
     co_dau = "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ"
     khong_dau = "aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd"
     bang_chuyen = str.maketrans(co_dau, khong_dau)
     return chuoi_chu.translate(bang_chuyen).lower()
 
-# Khởi tạo cơ sở dữ liệu gốc nếu chạy lần đầu tiên
 if not os.path.exists(DB_FILE):
     du_lieu_goc = {
         "users": {
@@ -46,7 +43,6 @@ if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(du_lieu_goc, f, ensure_ascii=False, indent=4)
 
-# Nạp dữ liệu vào bộ nhớ đệm Session State của Streamlit
 if 'users' not in st.session_state or 'kho_hang' not in st.session_state:
     with open(DB_FILE, "r", encoding="utf-8") as f:
         tep_du_lieu = json.load(f)
@@ -112,7 +108,6 @@ else:
     user_truc = st.session_state.users[st.session_state.current_user]
     cap_bac_hien_tai = user_truc["role"]
     
-    # Cấu hình thanh chức năng Sidebar bên trái màn hình
     st.sidebar.title("🏭 CHỢ HỒNG PHÁT")
     st.sidebar.markdown(f"👤 Trực ban: **{user_truc['name']}**")
     st.sidebar.markdown(f"🎖️ Quyền hạn: `{ROLE_LABELS[cap_bac_hien_tai]}`")
@@ -211,3 +206,8 @@ else:
             for tk, thong_tin_tk in st.session_state.users.items():
                 bang_hien_thi.append({
                     "Tài khoản hệ thống": tk,
+                    "Họ và tên thật": thong_tin_tk["name"],
+                    "Cấp bậc chức vụ": ROLE_LABELS[thong_tin_tk["role"]],
+                    "Quyền hoạt động": "🟢 Hoạt động bình thường" if thong_tin_tk["active"] else "🔴 Đang bị khóa quyền"
+                })
+            st.table(bang_hien_thi)
