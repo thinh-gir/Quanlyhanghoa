@@ -90,7 +90,7 @@ else:
     role_now = u_now["role"]
     col_hd1, col_hd2 = st.columns(2)
     with col_hd1:
-        st.markdown(f"<h2 style='color: #0088cc; margin:0;'>🏭 SMART-HUB — HỒNG PHÁT</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color: #0088cc; margin:0;'>🏭 SMART-HUB — HỒNG PHÁT</h2>", unsafe_allow_html=True)
         st.write(f"👤 Trực: **{u_now['name']}** | `{ROLE_LABELS[role_now]}`")
     with col_hd2:
         if st.button("🚪 ĐĂNG XUẤT", type="secondary", use_container_width=True):
@@ -136,8 +136,13 @@ else:
             st.markdown("---")
     st.markdown("---")
 
-    # KHU VỰC THAO TÁC CỦA QUẢN LÝ (THÊM / SỬA / XÓA)
-    if role_now in ["1_creator", "2_owner", "3_admin"]:
+    # ==========================================
+    # KHU VỰC QUẢN TRỊ PHẲNG TUYỆT ĐỐI (KHÔNG LỒNG GHÉP NHAU CHỐNG LỖI LỀ LỐI)
+    # ==========================================
+    is_admin_up = role_now in ["1_creator", "2_owner", "3_admin"]
+    
+    # 3.1 CHỨC NĂNG: NHẬP VẬT TƯ MỚI
+    if is_admin_up:
         st.markdown("### ⚙️ MANAGEMENT ZONE (Khu vực quản trị dành cho Ban Quản Lý Chợ)")
         st.markdown("#### ➕ Nhập thêm vật tư hàng hóa mới")
         col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns(5)
@@ -146,28 +151,32 @@ else:
         with col_a3: add_nsx = st.date_input("Ngày sản xuất:", value=date.today(), key="w_add_nsx").strftime("%Y-%m-%d")
         with col_a4: add_nhh = st.date_input("Hạn sử dụng:", value=date.today(), key="w_add_nhh").strftime("%Y-%m-%d")
         with col_a5: add_loc = st.text_input("Vị trí kệ kho chi tiết:", key="w_add_loc").strip()
+        
         if st.button("➕ XÁC NHẬN GHI SỔ NHẬP KHO", type="primary", use_container_width=True):
-            if not add_name or not add_barcode or not add_loc: st.error("Vui lòng nhập đầy đủ thông tin!")
-            elif any(x["ma_vach"] == add_barcode for x in st.session_state.kho_hang): st.error("Mã vạch này đã tồn tại sẵn!")
+            if not add_name or not add_barcode or not add_loc:
+                st.error("Vui lòng nhập đầy đủ thông tin!")
+            elif any(x["ma_vach"] == add_barcode for x in st.session_state.kho_hang):
+                st.error("Mã vạch này đã tồn tại sẵn!")
             else:
                 st.session_state.kho_hang.append({"ten": add_name.upper(), "ma_vach": add_barcode, "ngay_sx": add_nsx, "ngay_hh": add_nhh, "vi_tri": add_loc})
-                luu_du_lieu_he_thong(); st.success(f"Đã cập nhật thành công sản phẩm {add_name.upper()}!"); st.rerun()
+                luu_du_lieu_he_thong()
+                st.success(f"Đã cập nhật thành công sản phẩm {add_name.upper()}!")
+                st.rerun()
         st.markdown("---")
-        
-        # CHỨC NĂNG SỬA HÀNG ĐÃ LÀM PHẲNG: DÙNG DROPDOWN CHỌN ĐỂ CHỐNG LỆCH LỀ
+
+    # 3.2 CHỨC NĂNG: SỬA HOẶC XÓA VẬT TƯ
+    if is_admin_up and st.session_state.kho_hang:
         st.markdown("#### ✏️ Sửa đổi thông tin chi tiết / Xóa bỏ vật tư")
-        if st.session_state.kho_hang:
-            ds_ten_kho = [f"{x['ten']} [Mã vạch: {x['ma_vach']}]" for x in st.session_state.kho_hang]
-            sp_chon_de_sua = st.selectbox("Chọn sản phẩm bạn muốn sửa đổi hoặc xóa bỏ:", options=ds_ten_kho, key="sb_edit_product_flat")
-            idx_sua = ds_ten_kho.index(sp_chon_de_sua)
-            item_sua = st.session_state.kho_hang[idx_sua]
-            
-            e_name = st.text_input("Điều chỉnh tên hàng hóa mới:", value=item_sua["ten"], key="txt_edit_flat_name").strip()
-            e_bar = st.text_input("Điều chỉnh mã vạch mới:", value=item_sua["ma_vach"], key="txt_edit_flat_bar").strip()
-            e_loc = st.text_input("Điều chỉnh vị trí kệ hàng mới:", value=item_sua["vi_tri"], key="txt_edit_flat_loc").strip()
-            
-            if st.button("💾 XÁC NHẬN LƯU THAY ĐỔI VẬT TƯ", type="primary", use_container_width=True):
-                if not e_name or not e_bar or not e_loc: st.error("Không được để trống thông tin!")
-                else:
-                    st.session_state.kho_hang[idx_sua] = {"ten": e_name.upper(), "ma_vach": e_bar, "ngay_sx": item_sua["ngay_sx"], "ngay_hh": item_sua["ngay_hh"], "vi_tri": e_loc}
-                    luu_du_lieu_he_thong(); st.success("Đã ghi nhận lưu thông tin!"); st.rerun()
+        ds_ten_kho = [f"{x['ten']} [Mã vạch: {x['ma_vach']}]" for x in st.session_state.kho_hang]
+        sp_chon_de_sua = st.selectbox("Chọn sản phẩm bạn muốn sửa đổi hoặc xóa bỏ:", options=ds_ten_kho, key="sb_edit_product_flat")
+        idx_sua = ds_ten_kho.index(sp_chon_de_sua)
+        item_sua = st.session_state.kho_hang[idx_sua]
+        
+        e_name = st.text_input("Điều chỉnh tên hàng hóa mới:", value=item_sua["ten"], key="txt_edit_flat_name").strip()
+        e_bar = st.text_input("Điều chỉnh mã vạch mới:", value=item_sua["ma_vach"], key="txt_edit_flat_bar").strip()
+        e_loc = st.text_input("Điều chỉnh vị trí kệ hàng mới:", value=item_sua["vi_tri"], key="txt_edit_flat_loc").strip()
+        
+        if st.button("💾 XÁC NHẬN LƯU THAY ĐỔI VẬT TƯ", type="primary", use_container_width=True):
+            if not e_name or not e_bar or not e_loc:
+                st.error("Không được để trống thông tin!")
+            else:
