@@ -1,38 +1,20 @@
 import streamlit as st
 import json
 import os
-from datetime import datetime, date
+from datetime import date
 
 # =========================
-# CONFIG
+# SETUP
 # =========================
-st.set_page_config(
-    page_title="Smart-Hub Hồng Phát",
-    layout="wide",
-    page_icon="🏭"
-)
+st.set_page_config(page_title="Smart-Hub", layout="wide", page_icon="🏭")
 
-DB_FILE = "smart_hub_db.json"
+DB_FILE = "smart_hub_safe.json"
 
-ROLE_LABELS = {
-    "1_creator": "👑 CREATOR",
-    "2_owner": "💼 BOSS",
-    "3_admin": "🛠️ ADMIN",
-    "4_staff": "👁️ STAFF"
-}
 
 # =========================
-# UTILS
+# SAFE UTIL
 # =========================
-def save_data():
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump({
-            "users": st.session_state.users,
-            "kho_hang": st.session_state.kho_hang
-        }, f, ensure_ascii=False, indent=4)
-
-
-def remove_vietnamese(text):
+def remove_vietnamese(text: str) -> str:
     if not text:
         return ""
     s = "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ"
@@ -40,17 +22,36 @@ def remove_vietnamese(text):
     return text.translate(str.maketrans(s, r)).lower()
 
 
+def safe_item(item: dict) -> dict:
+    """Chống thiếu field -> không crash"""
+    return {
+        "ten": item.get("ten", "UNKNOWN"),
+        "ma_vach": item.get("ma_vach", "0000"),
+        "ngay_sx": item.get("ngay_sx", ""),
+        "ngay_hh": item.get("ngay_hh", ""),
+        "vi_tri": item.get("vi_tri", "N/A")
+    }
+
+
+def save_db():
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump({
+            "users": st.session_state.users,
+            "kho_hang": st.session_state.kho_hang
+        }, f, ensure_ascii=False, indent=4)
+
+
 # =========================
-# INIT DB
+# INIT DATA
 # =========================
 if not os.path.exists(DB_FILE):
-    default = {
+    init = {
         "users": {
             "admin": {
                 "name": "Admin",
                 "password": "123",
-                "active": True,
-                "role": "1_creator"
+                "role": "1_creator",
+                "active": True
             }
         },
         "kho_hang": [
@@ -59,12 +60,12 @@ if not os.path.exists(DB_FILE):
                 "ma_vach": "1111",
                 "ngay_sx": "2026-01-01",
                 "ngay_hh": "2026-06-30",
-                "vi_tri": "Khu A - Ke 01"
+                "vi_tri": "Khu A"
             }
         ]
     }
     with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(default, f, ensure_ascii=False, indent=4)
+        json.dump(init, f, ensure_ascii=False, indent=4)
 
 
 if "users" not in st.session_state:
@@ -73,58 +74,52 @@ if "users" not in st.session_state:
         st.session_state.users = data["users"]
         st.session_state.kho_hang = data["kho_hang"]
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.current_user = None
+if "login" not in st.session_state:
+    st.session_state.login = False
+    st.session_state.user = None
 
 
 # =========================
-# LOGIN / REGISTER
+# LOGIN
 # =========================
-if not st.session_state.logged_in:
+if not st.session_state.login:
 
-    st.title("🏭 SMART-HUB HỒNG PHÁT")
+    st.title("🏭 SMART-HUB")
 
     col1, col2 = st.columns(2)
 
-    # LOGIN
     with col1:
-        st.subheader("Đăng nhập")
-
         u = st.text_input("User", key="login_user")
         p = st.text_input("Password", type="password", key="login_pass")
 
         if st.button("Login", key="login_btn"):
             if u in st.session_state.users:
                 if st.session_state.users[u]["password"] == p:
-                    st.session_state.logged_in = True
-                    st.session_state.current_user = u
+                    st.session_state.login = True
+                    st.session_state.user = u
                     st.rerun()
                 else:
                     st.error("Sai mật khẩu")
             else:
-                st.error("User không tồn tại")
+                st.error("Không tồn tại user")
 
-    # REGISTER
     with col2:
-        st.subheader("Đăng ký")
-
-        ru = st.text_input("User mới", key="reg_user")
-        rn = st.text_input("Tên", key="reg_name")
-        rp = st.text_input("Password", type="password", key="reg_pass")
+        nu = st.text_input("User mới", key="reg_user")
+        np = st.text_input("Tên", key="reg_name")
+        pw = st.text_input("Password", type="password", key="reg_pass")
 
         if st.button("Register", key="reg_btn"):
-            if ru in st.session_state.users:
+            if nu in st.session_state.users:
                 st.error("User đã tồn tại")
             else:
-                st.session_state.users[ru] = {
-                    "name": rn,
-                    "password": rp,
-                    "active": True,
-                    "role": "4_staff"
+                st.session_state.users[nu] = {
+                    "name": np,
+                    "password": pw,
+                    "role": "4_staff",
+                    "active": True
                 }
-                save_data()
-                st.success("Tạo tài khoản thành công")
+                save_db()
+                st.success("OK")
 
 
 # =========================
@@ -132,53 +127,49 @@ if not st.session_state.logged_in:
 # =========================
 else:
 
-    user = st.session_state.users[st.session_state.current_user]
+    user = st.session_state.users[st.session_state.user]
 
     st.title(f"🏭 Smart-Hub - {user['name']}")
 
     if st.button("Logout", key="logout"):
-        st.session_state.logged_in = False
-        st.session_state.current_user = None
+        st.session_state.login = False
+        st.session_state.user = None
         st.rerun()
 
     st.markdown("---")
 
     # =========================
-    # SEARCH (GOOGLE STYLE FIXED)
+    # SEARCH SAFE
     # =========================
-    st.subheader("🔍 Smart Search")
+    st.subheader("🔍 Search")
 
-    search = st.text_input("Tìm hàng / mã vạch", key="search_main")
+    q = st.text_input("Tìm hàng", key="search")
 
-    search_clean = remove_vietnamese(search)
+    q_clean = remove_vietnamese(q)
 
-    result_high = []
-    result_low = []
+    high = []
+    low = []
 
-    for item in st.session_state.kho_hang:
+    for raw in st.session_state.kho_hang:
+        item = safe_item(raw)
 
         name = remove_vietnamese(item["ten"])
-        code = item["ma_vach"].lower()
+        code = str(item["ma_vach"]).lower()
 
-        if search_clean == "":
-            result_high.append(item)
+        if q_clean == "":
+            high.append(item)
             continue
 
-        prefix_name = name.startswith(search_clean)
-        prefix_word = any(w.startswith(search_clean) for w in name.split())
-        prefix_code = code.startswith(search_clean)
-        contain = search_clean in name
+        if name.startswith(q_clean) or code.startswith(q_clean):
+            high.insert(0, item)
+        elif q_clean in name:
+            low.append(item)
 
-        if prefix_name or prefix_word or prefix_code:
-            result_high.insert(0, item)
-        elif contain:
-            result_low.append(item)
+    results = high + low
 
-    final = result_high + result_low
+    st.info(f"Tìm thấy {len(results)} sản phẩm")
 
-    st.info(f"🔎 {len(final)} kết quả")
-
-    for item in final[:30]:
+    for item in results[:30]:
         st.markdown(f"**📦 {item['ten']}**")
         st.write(f"📍 {item['vi_tri']}")
         st.write(f"🏷️ {item['ma_vach']}")
@@ -186,15 +177,30 @@ else:
         st.divider()
 
     # =========================
-    # ADMIN PANEL
+    # ADD SAFE
     # =========================
-    if user["role"] in ["1_creator", "2_owner", "3_admin"]:
+    st.subheader("➕ Thêm hàng")
 
-        st.markdown("## ⚙️ Admin Panel")
+    c1, c2, c3 = st.columns(3)
 
-        col1, col2, col3 = st.columns(3)
+    with c1:
+        name = st.text_input("Tên", key="add_name")
+    with c2:
+        code = st.text_input("Mã", key="add_code")
+    with c3:
+        loc = st.text_input("Vị trí", key="add_loc")
 
-        with col1:
-            name = st.text_input("Tên hàng", key="add_name")
-        with col2:
-            code = st.text_input("Mã
+    if st.button("Add", key="add_btn"):
+        if name and code and loc:
+            st.session_state.kho_hang.append({
+                "ten": name.upper(),
+                "ma_vach": code,
+                "ngay_sx": str(date.today()),
+                "ngay_hh": str(date.today()),
+                "vi_tri": loc
+            })
+            save_db()
+            st.success("Đã thêm")
+            st.rerun()
+        else:
+            st.error("Thiếu dữ liệu")
