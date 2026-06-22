@@ -4,17 +4,17 @@ import os
 from datetime import datetime, date
 
 # ==========================================
-# 1. CẤU HÌNH TRANG WEB & KHỞI TẠO BẢO MẬT
+# 1. CẤU HÌNH & KHỞI TẠO HỆ THỐNG SMART-HUB
 # ==========================================
-st.set_page_config(page_title="Hệ thống Quản lý Chợ Hồng Phát", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="Walmart Smart Inventory Hub - Hồng Phát", layout="wide", page_icon="🔵")
 
-DB_FILE = "dulieu_kho_hongphat_v6.json"
+DB_FILE = "dulieu_kho_walmart_v1.json"
 
 ROLE_LABELS = {
-    "1_creator": "👑 ĐỒNG SÁNG LẬP DUY NHẤT",
-    "2_owner": "💼 BOSS CHỦ CHỢ (OWNER)",
-    "3_admin": "🛠️ QUẢN LÝ (ADMIN)",
-    "4_staff": "👁️ NHÂN VIÊN (STAFF)"
+    "1_creator": "👑 CREATOR (ĐỒNG SÁNG LẬP)",
+    "2_owner": "💼 BOSS (CHỦ CHỢ)",
+    "3_admin": "🛠️ ADMIN (QUẢN LÝ)",
+    "4_staff": "👁️ STAFF (NHÂN VIÊN)"
 }
 
 def luu_du_lieu_he_thong():
@@ -54,146 +54,147 @@ if 'logged_in' not in st.session_state:
     st.session_state.current_user = None
 
 # ==========================================
-# 2. GIAO DIỆN HỆ THỐNG TRƯỚC ĐĂNG NHẬP
+# 2. GIAO DIỆN ĐĂNG NHẬP THUẦN CHỨC NĂNG
 # ==========================================
 if not st.session_state.logged_in:
-    st.title("🔒 HỆ THỐNG BẢO MẬT CHỢ HỒNG PHÁT")
+    st.markdown("<h2 style='text-align: center; color: #0071CE;'>🔵 WALMART SMART INVENTORY LOGIN</h2>", unsafe_allow_html=True)
     
-    giao_dien_auth = st.radio("CHỌN THAO TÁC THỰC HIỆN:", ["🔑 Đăng nhập hệ thống", "📝 Đăng ký tài khoản mới"], horizontal=True)
-    
-    if giao_dien_auth == "🔑 Đăng nhập hệ thống":
-        user_input = st.text_input("Tên tài khoản truy cập:", key="nhap_user").strip()
-        pass_input = st.text_input("Mật khẩu bảo mật:", type="password", key="nhap_pass")
-        
-        if st.button("Đăng nhập vào hệ thống", type="primary", use_container_width=True):
-            if user_input in st.session_state.users:
-                thong_tin = st.session_state.users[user_input]
-                if thong_tin["password"] == pass_input:
-                    if thong_tin["active"]:
+    col_l1, col_l2 = st.columns(2)
+    with col_l1:
+        st.subheader("🔑 ĐĂNG NHẬP")
+        u_in = st.text_input("Username:", key="u_in").strip()
+        p_in = st.text_input("Password:", type="password", key="p_in")
+        if st.button("SIGN IN", type="primary", use_container_width=True):
+            if u_in in st.session_state.users:
+                u_info = st.session_state.users[u_in]
+                if u_info["password"] == p_in:
+                    if u_info["active"]:
                         st.session_state.logged_in = True
-                        st.session_state.current_user = user_input
-                        st.success("🎉 Đăng nhập thành công!")
+                        st.session_state.current_user = u_in
                         st.rerun()
-                    else:
-                        st.error("🚨 Tài khoản này chưa được kích hoạt hoặc đang bị khóa quyền!")
-                else:
-                    st.error("❌ Mật khẩu nhập vào chưa chính xác!")
+                    else: st.error("Tài khoản chưa được kích hoạt!")
+                else: st.error("Sai mật khẩu!")
+            else: st.error("Tài khoản không tồn tại!")
+            
+    with col_l2:
+        st.subheader("📝 ĐĂNG KÝ MỚI")
+        r_user = st.text_input("Username mới (viết liền):", key="r_user").strip()
+        r_name = st.text_input("Họ và tên thật:", key="r_name").strip()
+        r_pass = st.text_input("Mật khẩu truy cập:", type="password", key="r_pass")
+        if st.button("CREATE ACCOUNT", use_container_width=True):
+            if not r_user or not r_name or not r_pass:
+                st.error("Vui lòng điền đủ thông tin!")
+            elif r_user in st.session_state.users:
+                st.error("Tên tài khoản này đã tồn tại!")
             else:
-                st.error("❌ Tài khoản này không tồn tại trên hệ thống dữ liệu!")
-                
-    else:
-        st.info("💡 Tài khoản đăng ký tự do mặc định sẽ xếp ở cấp bậc Nhân viên (Staff) và cần cấp trên xét duyệt.")
-        reg_user = st.text_input("Tạo tên tài khoản (Viết liền không dấu):", key="tao_user").strip()
-        reg_name = st.text_input("Nhập họ và tên thật:", key="tao_ten").strip()
-        reg_pass = st.text_input("Tạo mật khẩu đăng nhập:", type="password", key="tao_pass")
-        
-        if st.button("Gửi yêu cầu đăng ký tài khoản", use_container_width=True):
-            if not reg_user or not reg_name or not reg_pass:
-                st.error("❌ Vui lòng cung cấp đầy đủ thông tin, không được bỏ trống!")
-            elif reg_user in st.session_state.users:
-                st.error("❌ Tên tài khoản này đã được sử dụng!")
-            else:
-                st.session_state.users[reg_user] = {"name": reg_name, "password": reg_pass, "active": False, "role": "4_staff"}
+                st.session_state.users[r_user] = {"name": r_name, "password": r_pass, "active": False, "role": "4_staff"}
                 luu_du_lieu_he_thong()
-                st.success("🎉 Đăng ký thành công! Hãy báo cho cấp trên mở khóa tài khoản cho bạn.")
+                st.success("Đăng ký thành công! Hãy chờ cấp trên duyệt.")
 
 # ==========================================
-# 3. GIAO DIỆN CHÍNH SAU KHI ĐĂNG NHẬP THÀNH CÔNG
+# 3. DASHBOARD QUẢN LÝ KHO WALMART CHÍNH THỨC
 # ==========================================
 else:
-    user_truc = st.session_state.users[st.session_state.current_user]
-    cap_bac_hien_tai = user_truc["role"]
+    u_now = st.session_state.users[st.session_state.current_user]
+    role_now = u_now["role"]
     
-    st.sidebar.title("🏭 CHỢ HỒNG PHÁT")
-    st.sidebar.markdown(f"👤 Trực ban: **{user_truc['name']}**")
-    st.sidebar.markdown(f"🎖️ Quyền hạn: `{ROLE_LABELS[cap_bac_hien_tai]}`")
-    st.sidebar.markdown("---")
-    if st.sidebar.button("🚪 Đăng xuất khỏi hệ thống", type="secondary", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.current_user = None
-        st.rerun()
-
-    st.title("🏭 HỆ THỐNG TRỰC BAN CHỢ HỒNG PHÁT")
+    # Header phong cách Walmart
+    col_hd1, col_hd2 = st.columns([4, 1])
+    with col_hd1:
+        st.markdown(f"<h1 style='color: #0071CE; margin:0;'>🔵 WALMART INVENTORY HUB — HỒNG PHÁT</h1>", unsafe_allow_html=True)
+        st.write(f"👤 Người trực: **{u_now['name']}** | Chức vụ: `{ROLE_LABELS[role_now]}`")
+    with col_hd2:
+        if st.button("🚪 LOG OUT", type="secondary", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.current_user = None
+            st.rerun()
+            
     st.markdown("---")
     
-    # CHỨC NĂNG CHUNG 1: CẢNH BÁO HẠN SỬ DỤNG
-    st.header("⏳ CẢNH BÁO BẢO QUẢN SẢN PHẨM (DƯỚI 7 NGÀY)")
-    thoi_gian_thuc = datetime.now()
+    # BANNER 1: CẢNH BÁO SẢN PHẨM HẾT HẠN (DƯỚI 7 NGÀY)
     co_canh_bao = False
-    
-    for hang in st.session_state.kho_hang:
+    for item in st.session_state.kho_hang:
         try:
-            ngay_het_han_dt = datetime.strptime(hang.get("ngay_hh", "2099-12-31"), "%Y-%m-%d")
-            tinh_toan_ngay = (ngay_het_han_dt - thoi_gian_thuc).days + 1
-            if tinh_toan_ngay <= 7:
+            days_left = (datetime.strptime(item.get("ngay_hh", "2099-12-31"), "%Y-%m-%d") - datetime.now()).days + 1
+            if days_left <= 7:
                 co_canh_bao = True
-                if tinh_toan_ngay < 0:
-                    st.error(f"🚨 **{hang['ten'].upper()}** - **ĐÃ QUÁ HẠN {abs(tinh_toan_ngay)} NGÀY!** 📍 Kệ: {hang.get('vi_tri', 'Chưa rõ')}")
+                if days_left < 0:
+                    st.error(f"🚨 **💥 ĐÃ QUÁ HẠN {abs(days_left)} NGÀY**: {item['ten'].upper()} | Mã vạch: {item['ma_vach']} | Vị trí: {item['vi_tri']}")
                 else:
-                    st.warning(f"⚠️ **{hang['ten'].upper()}** - Còn lại **{tinh_toan_ngay} ngày**. 📍 Kệ: {hang.get('vi_tri', 'Chưa rõ')}")
-        except:
-            pass
-            
+                    st.warning(f"⚠️ **⏳ SẮP HẾT HẠN (Còn {days_left} ngày)**: {item['ten'].upper()} | Mã vạch: {item['ma_vach']} | Vị trí: {item['vi_tri']}")
+        except: pass
     if not co_canh_bao:
-        st.success("✅ Hệ thống an toàn. Không phát hiện sản phẩm nào sắp hết hạn.")
-        
+        st.success("✅ Toàn bộ vật liệu trong kho đều có hạn sử dụng an toàn.")
+
     st.markdown("---")
-
-    # CHỨC NĂNG CHUNG 2: TRA CỨU KHÔNG DẤU VÀ CHỮ CÁI
-    st.header("🔍 BỘ ĐỊNH VỊ VỊ TRÍ HÀNG HÓA THÔNG MINH")
-    o_tim_kiem = st.text_input("Gõ chữ cái, tên sản phẩm (có dấu/không dấu) hoặc quét mã vạch:", key="txt_search_box").strip()
     
-    danh_sach_loc_duoc = []
-    tu_khoa_xu_ly = loai_bo_dau_tieng_viet(o_tim_kiem)
+    # BANNER 2: THANH TÌM KIẾM SMART SEARCH TRÊN CÙNG
+    st.markdown("### 🔍 QUICK SEARCH (Tìm kiếm thông minh)")
+    q_search = st.text_input("Gõ chữ cái, từ khóa, quét mã vạch để định vị nhanh sản phẩm:", key="walmart_search_bar").strip()
     
+    items_filtered = []
+    q_clean = loai_bo_dau_tieng_viet(q_search)
     for sp in st.session_state.kho_hang:
-        if tu_khoa_xu_ly in loai_bo_dau_tieng_viet(sp["ten"]) or tu_khoa_xu_ly in sp["ma_vach"].lower():
-            danh_sach_loc_duoc.append(sp)
-            
-    if danh_sach_loc_duoc:
-        hop_lua_chon = ["-- Chọn sản phẩm cần định vị vị trí --"]
-        for san_pham in danh_sach_loc_duoc:
-            hop_lua_chon.append(f"{san_pham['ten'].upper()} | Mã vạch: {san_pham['ma_vach']}")
-            
-        chon_san_pham = st.selectbox("Kết quả bộ lọc thông minh:", options=hop_lua_chon, index=0, key="sb_search_result")
-        
-        if chon_san_pham != "-- Chọn sản phẩm cần định vị vị trí --":
-            mv_trich_xuat = chon_san_pham.split("| Mã vạch: ")[-1].strip()
-            for hang_hoa in st.session_state.kho_hang:
-                if hang_hoa["ma_vach"] == mv_trich_xuat:
-                    st.info(f"📍 **VỊ TRÍ CHÍNH XÁC TRÊN KỆ:** {hang_hoa.get('vi_tri', 'Chưa xác định')}")
-                    st.write(f"📦 **Tên vật tư:** {hang_hoa['ten'].upper()} | 🆔 **Mã vạch:** `{hang_hoa['ma_vach']}`")
-                    st.write(f"📅 **NSX:** {hang_hoa.get('ngay_sx', 'Chưa rõ')} | **HSD:** {hang_hoa.get('ngay_hh', 'Chưa rõ')}")
-                    break
-    else:
-        st.error("❌ Không tìm thấy sản phẩm nào phù hợp.")
+        if q_clean in loai_bo_dau_tieng_viet(sp["ten"]) or q_clean in sp["ma_vach"].lower():
+            items_filtered.append(sp)
 
-    # ==========================================
-    # 4. TRUNG TÂM QUẢN TRỊ PHÂN CẤP (CHỈ ADMIN TRỞ LÊN MỚI THẤY)
-    # ==========================================
-    if cap_bac_hien_tai in ["1_creator", "2_owner", "3_admin"]:
+    # Hiển thị kết quả tìm kiếm dạng bảng Thẻ trực quan
+    if q_search:
+        st.markdown(f"💡 *Kết quả lọc nhanh cho từ khóa '{q_search}':*")
+        for res in items_filtered:
+            st.info(f"📍 **VỊ TRÍ KỆ HÀNG:** {res['vi_tri']} \n\n 📦 **Tên vật tư:** {res['ten'].upper()} | 🆔 **Mã vạch:** `{res['ma_vach']}` | 📅 **HSD:** {res['ngay_hh']}")
         st.markdown("---")
-        st.header("⚙️ TRUNG TÂM ĐIỀU HÀNH BẢO MẬT CHỢ HỒNG PHÁT")
+
+    # BANNER 3: KHU VỰC THAO TÁC CỦA QUẢN LÝ (THÊM / SỬA / XÓA)
+    if role_now in ["1_creator", "2_owner", "3_admin"]:
+        st.markdown("### ⚙️ MANAGEMENT ZONE (Khu vực quản trị dành cho Admin trở lên)")
         
-        # CHỨC NĂNG QUẢN LÝ NHÂN SỰ
-        st.subheader("👥 Phê duyệt & Quản lý Tài khoản Cấp dưới")
-        tai_khoan_hop_le = [u for u in st.session_state.users.keys() if u != st.session_state.current_user and st.session_state.users[u]["role"] != "1_creator"]
+        # CHỨC NĂNG: NHẬP VẬT TƯ MỚI (Dạng thanh ngang tối giản)
+        st.markdown("#### ➕ Nhập thêm vật tư mới")
+        col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns([2, 1, 1, 1, 2])
+        with col_a1: add_name = st.text_input("Tên sản phẩm:", key="w_add_name").strip()
+        with col_a2: add_barcode = st.text_input("Mã vạch:", key="w_add_bar").strip()
+        with col_a3: add_nsx = st.date_input("Ngày SX:", value=date.today(), key="w_add_nsx").strftime("%Y-%m-%d")
+        with col_a4: add_nhh = st.date_input("Ngày HH:", value=date.today(), key="w_add_nhh").strftime("%Y-%m-%d")
+        with col_a5: add_loc = st.text_input("Vị trí chi tiết trên kệ:", key="w_add_loc").strip()
         
-        if tai_khoan_hop_le:
-            tk_duoc_chon = st.selectbox("Chọn tài khoản nhân sự cần xử lý quyền:", options=tai_khoan_hop_le, key="sb_manage_staff")
-            thong_tin_sua = st.session_state.users[tk_duoc_chon]
-            role_sua = thong_tin_sua["role"]
-            
-            quyen_duyet = False
-            if cap_bac_hien_tai == "1_creator": quyen_duyet = True
-            elif cap_bac_hien_tai == "2_owner" and role_sua in ["3_admin", "4_staff"]: quyen_duyet = True
-            elif cap_bac_hien_tai == "3_admin" and role_sua == "4_staff": quyen_duyet = True
+        if st.button("➕ XÁC NHẬN NHẬP KHO", type="primary", use_container_width=True):
+            if not add_name or not add_barcode or not add_loc:
+                st.error("Vui lòng nhập đủ thông tin bắt buộc (Tên, Mã vạch, Vị trí)!")
+            elif any(x["ma_vach"] == add_barcode for x in st.session_state.kho_hang):
+                st.error("Mã vạch này đã tồn tại!")
+            else:
+                st.session_state.kho_hang.append({"ten": add_name.upper(), "ma_vach": add_barcode, "ngay_sx": add_nsx, "ngay_hh": add_nhh, "vi_tri": add_loc})
+                luu_du_lieu_he_thong()
+                st.success(f"Đã thêm sản phẩm {add_name.upper()}!")
+                st.rerun()
+
+        st.markdown("---")
+        
+        # CHỨC NĂNG: BẢNG CHỈNH SỬA / XÓA SẢN PHẨM TRỰC TIẾP
+        st.markdown("#### ✏️ Sửa / Xóa dữ liệu kho")
+        if st.session_state.kho_hang:
+            for idx, item in enumerate(st.session_state.kho_hang):
+                col_e1, col_e2, col_e3, col_btn1, col_btn2 = st.columns([2, 1, 2, 1, 1])
+                with col_e1: e_name = st.text_input(f"Tên hàng #{idx+1}", value=item["ten"], key=f"we_name_{idx}").strip()
+                with col_e2: e_bar = st.text_input(f"Mã vạch #{idx+1}", value=item["ma_vach"], key=f"we_bar_{idx}").strip()
+                with col_e3: e_loc = st.text_input(f"Vị trí kệ #{idx+1}", value=item["vi_tri"], key=f"we_loc_{idx}").strip()
                 
-            if quyen_duyet:
-                chuyen_trang_thai = st.checkbox("Cho phép tài khoản này hoạt động đăng nhập", value=thong_tin_sua["active"], key=f"chk_active_{tk_duoc_chon}")
-                giai_cap_cho_phep = {"👁️ Nhân viên (STAFF)": "4_staff"}
-                if cap_bac_hien_tai in ["1_creator", "2_owner"]: giai_cap_cho_phep["🛠️ Quản lý (ADMIN)"] = "3_admin"
-                if cap_bac_hien_tai == "1_creator": giai_cap_cho_phep["💼 BOSS CHỦ CHỢ (OWNER)"] = "2_owner"
-                
-                ten_nhan_hien_tai = [k for k, v in giai_cap_cho_phep.items() if v == role_sua]
-                vi_tri_mac_dinh = list(giai_cap_cho_phep.keys()).index(ten_nhan_hien_tai) if ten_nhan_hien_tai else 0
+                with col_btn1:
+                    if st.button("💾 LƯU", key=f"w_save_btn_{idx}", use_container_width=True):
+                        if not e_name or not e_bar or not e_loc: st.error("Không bỏ trống thông tin!")
+                        else:
+                            st.session_state.kho_hang[idx] = {"ten": e_name.upper(), "ma_vach": e_bar, "ngay_sx": item["ngay_sx"], "ngay_hh": item["ngay_hh"], "vi_tri": e_loc}
+                            luu_du_lieu_he_thong()
+                            st.success("Đã lưu!")
+                            st.rerun()
+                with col_btn2:
+                    if st.button("🗑️ XÓA", key=f"w_del_btn_{idx}", use_container_width=True):
+                        st.session_state.kho_hang.pop(idx)
+                        luu_du_lieu_he_thong()
+                        st.success("Đã xóa!")
+                        st.rerun()
+        else: st.info("Kho hiện đang trống.")
+
+        st.markdown("---")
+        
