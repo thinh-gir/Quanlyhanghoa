@@ -42,7 +42,7 @@ def hien_thi_canh_bao_het_han():
             if days_left <= 7:
                 co_canh_bao = True
                 if days_left < 0:
-                    st.error(f"CANH BAO - DA QUA HAN {abs(days_left)} NGAY: {item['ten'].upper()} | Ke: {item['vi_tri']}")
+                    st.error(f"CANH BAO - DA QUA HAN {abs(days_left)} NGÀY: {item['ten'].upper()} | Ke: {item['vi_tri']}")
                 else:
                     st.warning(f"CANH BAO - SAP HET HAN (Con {days_left} ngay): {item['ten'].upper()} | Ke: {item['vi_tri']}")
         except:
@@ -190,8 +190,9 @@ if 'logged_in' not in st.session_state:
     st.session_state.current_user = None
 
 # ==========================================
-# 2. GIAO DIỆN ĐĂNG NHẬP TRỰC QUAN
+# 2. GIAO DIỆN ĐĂNG NHẬP (DUỖI PHẲNG CHỐNG ẨN GIAO DIỆN)
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<h2 style='text-align: center; color: #0088cc;'>HE THONG BAO MAT SMART-HUB HONG PHAT</h2>", unsafe_allow_html=True)
-    col_l1, col_l2 = st.columns(2)
+    
+
