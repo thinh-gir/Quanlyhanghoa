@@ -8,7 +8,7 @@ from datetime import datetime, date
 # ==========================================
 st.set_page_config(page_title="Walmart Smart Inventory Hub - Hồng Phát", layout="wide", page_icon="🔵")
 
-DB_FILE = "dulieu_kho_walmart_v1.json"
+DB_FILE = "dulieu_kho_walmart_v2.json"
 
 ROLE_LABELS = {
     "1_creator": "👑 CREATOR (ĐỒNG SÁNG LẬP)",
@@ -37,7 +37,8 @@ if not os.path.exists(DB_FILE):
         },
         "kho_hang": [
             {"ten": "CHOCOMONT BÁNH GẤU", "ma_vach": "1111", "ngay_sx": "2026-01-01", "ngay_hh": "2026-06-30", "vi_tri": "Khu A - Kệ 01 - Tầng 2"},
-            {"ten": "CHẢO CHỐNG DÍNH", "ma_vach": "2222", "ngay_sx": "2026-01-01", "ngay_hh": "2028-01-01", "vi_tri": "Khu A - Kệ 02 - Tầng 1"}
+            {"ten": "CHẢO CHỐNG DÍNH", "ma_vach": "2222", "ngay_sx": "2026-01-01", "ngay_hh": "2028-01-01", "vi_tri": "Khu A - Kệ 02 - Tầng 1"},
+            {"ten": "BÁNH MÌ SỮA", "ma_vach": "3333", "ngay_sx": "2026-01-01", "ngay_hh": "2026-02-01", "vi_tri": "Khu B - Kệ 01 - Tầng 1"}
         ]
     }
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -98,8 +99,7 @@ else:
     u_now = st.session_state.users[st.session_state.current_user]
     role_now = u_now["role"]
     
-    # Header phong cách Walmart
-    col_hd1, col_hd2 = st.columns([4, 1])
+    col_hd1, col_hd2 = st.columns()
     with col_hd1:
         st.markdown(f"<h1 style='color: #0071CE; margin:0;'>🔵 WALMART INVENTORY HUB — HỒNG PHÁT</h1>", unsafe_allow_html=True)
         st.write(f"👤 Người trực: **{u_now['name']}** | Chức vụ: `{ROLE_LABELS[role_now]}`")
@@ -111,7 +111,7 @@ else:
             
     st.markdown("---")
     
-    # BANNER 1: CẢNH BÁO SẢN PHẨM HẾT HẠN (DƯỚI 7 NGÀY)
+    # CẢNH BÁO SẢN PHẨM HẾT HẠN
     co_canh_bao = False
     for item in st.session_state.kho_hang:
         try:
@@ -128,30 +128,64 @@ else:
 
     st.markdown("---")
     
-    # BANNER 2: THANH TÌM KIẾM SMART SEARCH TRÊN CÙNG
-    st.markdown("### 🔍 QUICK SEARCH (Tìm kiếm thông minh)")
-    q_search = st.text_input("Gõ chữ cái, từ khóa, quét mã vạch để định vị nhanh sản phẩm:", key="walmart_search_bar").strip()
+    # ==========================================
+    # CHỨC NĂNG NÂNG CẤP: GỢI Ý SEARCH GOOGLE / WALMART
+    # ==========================================
+    st.markdown("### 🔍 SMART AUTO-COMPLETE SEARCH (Gợi ý tìm kiếm thông minh ABC)")
     
-    items_filtered = []
+    # Ô nhập từ khóa chữ cái
+    q_search = st.text_input("Gõ từ khóa hoặc quét mã vạch (Hệ thống tự xếp lịch gợi ý theo bảng chữ cái):", key="walmart_smart_search").strip()
     q_clean = loai_bo_dau_tieng_viet(q_search)
+
+    # Thuật toán phân tách và sắp xếp gợi ý theo bảng chữ cái A-Z
+    start_with_query = []
+    contain_query = []
+
     for sp in st.session_state.kho_hang:
-        if q_clean in loai_bo_dau_tieng_viet(sp["ten"]) or q_clean in sp["ma_vach"].lower():
-            items_filtered.append(sp)
+        ten_clean = loai_bo_dau_tieng_viet(sp["ten"])
+        ma_vach_clean = sp["ma_vach"].lower()
+        
+        if q_clean in ten_clean or q_clean in ma_vach_clean:
+            # Nếu tên hoặc mã vạch BẮT ĐẦU bằng từ khóa gõ vào (Ví dụ gõ 'c' ra 'CHOCOMONT') -> Ưu tiên xếp lên đầu
+            if ten_clean.startswith(q_clean) or ma_vach_clean.startswith(q_clean):
+                start_with_query.append(sp)
+            else:
+                contain_query.append(sp)
 
-    # Hiển thị kết quả tìm kiếm dạng bảng Thẻ trực quan
+    # Sắp xếp từng nhóm độc lập theo bảng chữ cái từ A-Z dựa theo tên sản phẩm
+    start_with_query.sort(key=lambda x: x["ten"])
+    contain_query.sort(key=lambda x: x["ten"])
+
+    # Gom hai nhóm lại thành danh sách gợi ý hoàn chỉnh (Ưu tiên từ bắt đầu -> từ chứa bên trong)
+    danh_sach_goi_y = start_with_query + contain_query
+
+    # Đưa danh sách gợi ý vào Selectbox giống như thanh hiển thị Dropdown gợi ý dưới ô Search Walmart
+    options_goi_y = ["-- Chọn từ danh sách gợi ý kết quả bên dưới --"]
+    for idx, item in enumerate(danh_sach_goi_y):
+        options_goi_y.append(f"🛒 {item['ten'].upper()} [Mã vạch: {item['ma_vach']}]")
+
     if q_search:
-        st.markdown(f"💡 *Kết quả lọc nhanh cho từ khóa '{q_search}':*")
-        for res in items_filtered:
-            st.info(f"📍 **VỊ TRÍ KỆ HÀNG:** {res['vi_tri']} \n\n 📦 **Tên vật tư:** {res['ten'].upper()} | 🆔 **Mã vạch:** `{res['ma_vach']}` | 📅 **HSD:** {res['ngay_hh']}")
-        st.markdown("---")
+        st.markdown(f"✨ *Danh sách gợi ý khớp với từ khóa '**{q_search}**' (Đã xếp theo ABC):*")
+        lua_chon_goi_y = st.selectbox("Bấm vào đây để chọn nhanh kết quả gợi ý:", options=options_goi_y, index=0, key="sb_smart_dropdown")
+        
+        if lua_chon_goi_y != "-- Chọn từ danh sách gợi ý kết quả bên dưới --":
+            mv_tim = lua_chon_goi_y.split("[Mã vạch: ")[-1].replace("]", "").strip()
+            for sp in st.session_state.kho_hang:
+                if sp["ma_vach"] == mv_tim:
+                    st.info(f"📍 **ĐỊNH VỊ VỊ TRÍ KỆ KHO:** {sp['vi_tri']}\n\n📦 **Sản phẩm:** {sp['ten'].upper()} | 🆔 **Mã vạch:** `{sp['ma_vach']}` | 📅 **HSD:** {sp['ngay_hh']}")
+                    break
+    else:
+        st.info("💡 Mẹo: Chỉ cần gõ chữ cái đầu (ví dụ: c, ch, b), hệ thống sẽ tự hiển thị gợi ý thông minh lập tức.")
 
-    # BANNER 3: KHU VỰC THAO TÁC CỦA QUẢN LÝ (THÊM / SỬA / XÓA)
+    st.markdown("---")
+
+    # KHU VỰC THAO TÁC CỦA QUẢN LÝ (THÊM / SỬA / XÓA)
     if role_now in ["1_creator", "2_owner", "3_admin"]:
         st.markdown("### ⚙️ MANAGEMENT ZONE (Khu vực quản trị dành cho Admin trở lên)")
         
-        # CHỨC NĂNG: NHẬP VẬT TƯ MỚI (Dạng thanh ngang tối giản)
+        # CHỨC NĂNG: NHẬP VẬT TƯ MỚI
         st.markdown("#### ➕ Nhập thêm vật tư mới")
-        col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns([2, 1, 1, 1, 2])
+        col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns()
         with col_a1: add_name = st.text_input("Tên sản phẩm:", key="w_add_name").strip()
         with col_a2: add_barcode = st.text_input("Mã vạch:", key="w_add_bar").strip()
         with col_a3: add_nsx = st.date_input("Ngày SX:", value=date.today(), key="w_add_nsx").strftime("%Y-%m-%d")
@@ -160,41 +194,10 @@ else:
         
         if st.button("➕ XÁC NHẬN NHẬP KHO", type="primary", use_container_width=True):
             if not add_name or not add_barcode or not add_loc:
-                st.error("Vui lòng nhập đủ thông tin bắt buộc (Tên, Mã vạch, Vị trí)!")
+                st.error("Vui lòng nhập đủ thông tin bắt buộc!")
             elif any(x["ma_vach"] == add_barcode for x in st.session_state.kho_hang):
                 st.error("Mã vạch này đã tồn tại!")
             else:
                 st.session_state.kho_hang.append({"ten": add_name.upper(), "ma_vach": add_barcode, "ngay_sx": add_nsx, "ngay_hh": add_nhh, "vi_tri": add_loc})
                 luu_du_lieu_he_thong()
                 st.success(f"Đã thêm sản phẩm {add_name.upper()}!")
-                st.rerun()
-
-        st.markdown("---")
-        
-        # CHỨC NĂNG: BẢNG CHỈNH SỬA / XÓA SẢN PHẨM TRỰC TIẾP
-        st.markdown("#### ✏️ Sửa / Xóa dữ liệu kho")
-        if st.session_state.kho_hang:
-            for idx, item in enumerate(st.session_state.kho_hang):
-                col_e1, col_e2, col_e3, col_btn1, col_btn2 = st.columns([2, 1, 2, 1, 1])
-                with col_e1: e_name = st.text_input(f"Tên hàng #{idx+1}", value=item["ten"], key=f"we_name_{idx}").strip()
-                with col_e2: e_bar = st.text_input(f"Mã vạch #{idx+1}", value=item["ma_vach"], key=f"we_bar_{idx}").strip()
-                with col_e3: e_loc = st.text_input(f"Vị trí kệ #{idx+1}", value=item["vi_tri"], key=f"we_loc_{idx}").strip()
-                
-                with col_btn1:
-                    if st.button("💾 LƯU", key=f"w_save_btn_{idx}", use_container_width=True):
-                        if not e_name or not e_bar or not e_loc: st.error("Không bỏ trống thông tin!")
-                        else:
-                            st.session_state.kho_hang[idx] = {"ten": e_name.upper(), "ma_vach": e_bar, "ngay_sx": item["ngay_sx"], "ngay_hh": item["ngay_hh"], "vi_tri": e_loc}
-                            luu_du_lieu_he_thong()
-                            st.success("Đã lưu!")
-                            st.rerun()
-                with col_btn2:
-                    if st.button("🗑️ XÓA", key=f"w_del_btn_{idx}", use_container_width=True):
-                        st.session_state.kho_hang.pop(idx)
-                        luu_du_lieu_he_thong()
-                        st.success("Đã xóa!")
-                        st.rerun()
-        else: st.info("Kho hiện đang trống.")
-
-        st.markdown("---")
-        
