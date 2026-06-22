@@ -8,7 +8,7 @@ from datetime import datetime, date
 # ==========================================
 st.set_page_config(page_title="Hệ thống Quản lý Chợ Hồng Phát", layout="wide", page_icon="🏭")
 
-DB_FILE = "dulieu_kho_hongphat_v5.json"
+DB_FILE = "dulieu_kho_hongphat_v6.json"
 
 ROLE_LABELS = {
     "1_creator": "👑 ĐỒNG SÁNG LẬP DUY NHẤT",
@@ -58,9 +58,10 @@ if 'logged_in' not in st.session_state:
 # ==========================================
 if not st.session_state.logged_in:
     st.title("🔒 HỆ THỐNG BẢO MẬT CHỢ HỒNG PHÁT")
-    tab_dang_nhap, tab_dang_ky = st.tabs(["🔑 Đăng nhập hệ thống", "📝 Đăng ký tài khoản mới"])
     
-    with tab_dang_nhap:
+    giao_dien_auth = st.radio("CHỌN THAO TÁC THỰC HIỆN:", ["🔑 Đăng nhập hệ thống", "📝 Đăng ký tài khoản mới"], horizontal=True)
+    
+    if giao_dien_auth == "🔑 Đăng nhập hệ thống":
         user_input = st.text_input("Tên tài khoản truy cập:", key="nhap_user").strip()
         pass_input = st.text_input("Mật khẩu bảo mật:", type="password", key="nhap_pass")
         
@@ -71,17 +72,17 @@ if not st.session_state.logged_in:
                     if thong_tin["active"]:
                         st.session_state.logged_in = True
                         st.session_state.current_user = user_input
-                        st.success("🎉 Đăng nhập thành công vào hệ thống Chợ Hồng Phát!")
+                        st.success("🎉 Đăng nhập thành công!")
                         st.rerun()
                     else:
-                        st.error("🚨 Tài khoản này chưa được kích hoạt hoặc đang bị khóa bởi cấp trên!")
+                        st.error("🚨 Tài khoản này chưa được kích hoạt hoặc đang bị khóa quyền!")
                 else:
                     st.error("❌ Mật khẩu nhập vào chưa chính xác!")
             else:
                 st.error("❌ Tài khoản này không tồn tại trên hệ thống dữ liệu!")
                 
-    with tab_dang_ky:
-        st.info("💡 Tài khoản đăng ký tự do mặc định sẽ xếp ở cấp bậc Nhân viên (Staff) và cần cấp trên xét duyệt để mở khóa.")
+    else:
+        st.info("💡 Tài khoản đăng ký tự do mặc định sẽ xếp ở cấp bậc Nhân viên (Staff) và cần cấp trên xét duyệt.")
         reg_user = st.text_input("Tạo tên tài khoản (Viết liền không dấu):", key="tao_user").strip()
         reg_name = st.text_input("Nhập họ và tên thật:", key="tao_ten").strip()
         reg_pass = st.text_input("Tạo mật khẩu đăng nhập:", type="password", key="tao_pass")
@@ -90,16 +91,11 @@ if not st.session_state.logged_in:
             if not reg_user or not reg_name or not reg_pass:
                 st.error("❌ Vui lòng cung cấp đầy đủ thông tin, không được bỏ trống!")
             elif reg_user in st.session_state.users:
-                st.error("❌ Tên tài khoản này đã được sử dụng, vui lòng chọn tên khác!")
+                st.error("❌ Tên tài khoản này đã được sử dụng!")
             else:
-                st.session_state.users[reg_user] = {
-                    "name": reg_name, 
-                    "password": reg_pass, 
-                    "active": False, 
-                    "role": "4_staff"
-                }
+                st.session_state.users[reg_user] = {"name": reg_name, "password": reg_pass, "active": False, "role": "4_staff"}
                 luu_du_lieu_he_thong()
-                st.success("🎉 Đăng ký thành công! Hãy báo cho cấp trên trực ban mở khóa tài khoản cho bạn.")
+                st.success("🎉 Đăng ký thành công! Hãy báo cho cấp trên mở khóa tài khoản cho bạn.")
 
 # ==========================================
 # 3. GIAO DIỆN CHÍNH SAU KHI ĐĂNG NHẬP THÀNH CÔNG
@@ -117,10 +113,10 @@ else:
         st.session_state.current_user = None
         st.rerun()
 
-    st.title("🏭 HỆ THỐNG TRỰC BAN & ĐỊNH VỊ VẬT LIỆU")
+    st.title("🏭 HỆ THỐNG TRỰC BAN CHỢ HỒNG PHÁT")
     st.markdown("---")
     
-    # CHỨC NĂNG CHUNG 1: KIỂM TRA TỰ ĐỘNG HẠN SỬ DỤNG
+    # CHỨC NĂNG CHUNG 1: CẢNH BÁO HẠN SỬ DỤNG
     st.header("⏳ CẢNH BÁO BẢO QUẢN SẢN PHẨM (DƯỚI 7 NGÀY)")
     thoi_gian_thuc = datetime.now()
     co_canh_bao = False
@@ -129,84 +125,75 @@ else:
         try:
             ngay_het_han_dt = datetime.strptime(hang.get("ngay_hh", "2099-12-31"), "%Y-%m-%d")
             tinh_toan_ngay = (ngay_het_han_dt - thoi_gian_thuc).days + 1
-            
             if tinh_toan_ngay <= 7:
                 co_canh_bao = True
-                ten_hang_hoa = hang['ten'].upper()
-                vi_tri_kho = hang.get('vi_tri', 'Chưa rõ vị trí')
-                
                 if tinh_toan_ngay < 0:
-                    st.error(f"🚨 **{ten_hang_hoa}** - **ĐÃ QUÁ HẠN {abs(tinh_toan_ngay)} NGÀY!** 📍 Vị trí: {vi_tri_kho}")
+                    st.error(f"🚨 **{hang['ten'].upper()}** - **ĐÃ QUÁ HẠN {abs(tinh_toan_ngay)} NGÀY!** 📍 Kệ: {hang.get('vi_tri', 'Chưa rõ')}")
                 else:
-                    st.warning(f"⚠️ **{ten_hang_hoa}** - Sắp hết hạn (Còn lại **{tinh_toan_ngay} ngày**). 📍 Vị trí: {vi_tri_kho}")
-        except Exception:
+                    st.warning(f"⚠️ **{hang['ten'].upper()}** - Còn lại **{tinh_toan_ngay} ngày**. 📍 Kệ: {hang.get('vi_tri', 'Chưa rõ')}")
+        except:
             pass
             
     if not co_canh_bao:
-        st.success("✅ Hệ thống an toàn. Không phát hiện sản phẩm nào sắp hết hạn trong kho.")
+        st.success("✅ Hệ thống an toàn. Không phát hiện sản phẩm nào sắp hết hạn.")
         
     st.markdown("---")
 
-    # CHỨC NĂNG CHUNG 2: TÌM KIẾM THÔNG MINH KHÔNG DẤU & CHỮ CÁI
+    # CHỨC NĂNG CHUNG 2: TRA CỨU KHÔNG DẤU VÀ CHỮ CÁI
     st.header("🔍 BỘ ĐỊNH VỊ VỊ TRÍ HÀNG HÓA THÔNG MINH")
-    o_tim_kiem = st.text_input("Gõ chữ cái, tên sản phẩm (có dấu/không dấu) hoặc quét mã vạch:", "").strip()
+    o_tim_kiem = st.text_input("Gõ chữ cái, tên sản phẩm (có dấu/không dấu) hoặc quét mã vạch:", key="txt_search_box").strip()
     
     danh_sach_loc_duoc = []
     tu_khoa_xu_ly = loai_bo_dau_tieng_viet(o_tim_kiem)
     
     for sp in st.session_state.kho_hang:
-        ten_xu_ly = loai_bo_dau_tieng_viet(sp["ten"])
-        ma_vach_xu_ly = sp["ma_vach"].lower()
-        if tu_khoa_xu_ly in ten_xu_ly or tu_khoa_xu_ly in ma_vach_xu_ly:
+        if tu_khoa_xu_ly in loai_bo_dau_tieng_viet(sp["ten"]) or tu_khoa_xu_ly in sp["ma_vach"].lower():
             danh_sach_loc_duoc.append(sp)
             
-    if o_tim_kiem:
-        st.write(f"💡 Cơ chế thông minh lọc được **{len(danh_sach_loc_duoc)}** kết quả phù hợp:")
-
     if danh_sach_loc_duoc:
-        hop_lua_chon = ["-- Bấm vào đây để xem chi tiết vị trí định vị --"]
-        for i, san_pham in enumerate(danh_sach_loc_duoc):
-            hop_lua_chon.append(f"{i+1}. {san_pham['ten'].upper()} [Mã vạch: {san_pham['ma_vach']}]")
+        hop_lua_chon = ["-- Chọn sản phẩm cần định vị vị trí --"]
+        for san_pham in danh_sach_loc_duoc:
+            hop_lua_chon.append(f"{san_pham['ten'].upper()} | Mã vạch: {san_pham['ma_vach']}")
             
-        chon_san_pham = st.selectbox("Lựa chọn sản phẩm cần định vị vị trí:", options=hop_lua_chon, index=0)
+        chon_san_pham = st.selectbox("Kết quả bộ lọc thông minh:", options=hop_lua_chon, index=0, key="sb_search_result")
         
-        if chon_san_pham != "-- Bấm vào đây để xem chi tiết vị trí định vị --":
-            mv_trich_xuat = chon_san_pham.split("[Mã vạch: ")[-1].replace("]", "").strip()
+        if chon_san_pham != "-- Chọn sản phẩm cần định vị vị trí --":
+            mv_trich_xuat = chon_san_pham.split("| Mã vạch: ")[-1].strip()
             for hang_hoa in st.session_state.kho_hang:
                 if hang_hoa["ma_vach"] == mv_trich_xuat:
                     st.info(f"📍 **VỊ TRÍ CHÍNH XÁC TRÊN KỆ:** {hang_hoa.get('vi_tri', 'Chưa xác định')}")
-                    col_h1, col_h2 = st.columns(2)
-                    with col_h1:
-                        st.write(f"📦 **Tên vật tư:** {hang_hoa['ten'].upper()}")
-                        st.write(f"🆔 **Mã vạch sản phẩm:** `{hang_hoa['ma_vach']}`")
-                    with col_h2:
-                        st.write(f"📅 **Ngày sản xuất kho:** {hang_hoa.get('ngay_sx', 'Chưa rõ')}")
-                        st.write(f"📅 **Hạn sử dụng kho:** {hang_hoa.get('ngay_hh', 'Chưa rõ')}")
+                    st.write(f"📦 **Tên vật tư:** {hang_hoa['ten'].upper()} | 🆔 **Mã vạch:** `{hang_hoa['ma_vach']}`")
+                    st.write(f"📅 **NSX:** {hang_hoa.get('ngay_sx', 'Chưa rõ')} | **HSD:** {hang_hoa.get('ngay_hh', 'Chưa rõ')}")
                     break
     else:
-        st.error("❌ Không tìm thấy sản phẩm nào trùng khớp với từ khóa tìm kiếm của bạn.")
+        st.error("❌ Không tìm thấy sản phẩm nào phù hợp.")
 
     # ==========================================
-    # 4. TRUNG TÂM QUẢN TRỊ PHÂN CẤP BẢO MẬT TUYỆT ĐỐI
+    # 4. TRUNG TÂM QUẢN TRỊ PHÂN CẤP (CHỈ ADMIN TRỞ LÊN MỚI THẤY)
     # ==========================================
     if cap_bac_hien_tai in ["1_creator", "2_owner", "3_admin"]:
         st.markdown("---")
-        st.header("⚙️ TRUNG TÂM ĐIỀU HÀNH BẢO MẬT & PHÂN QUYỀN CHỢ HỒNG PHÁT")
+        st.header("⚙️ TRUNG TÂM ĐIỀU HÀNH BẢO MẬT CHỢ HỒNG PHÁT")
         
-        # Sửa đổi cốt lõi: Thay thế Tab bằng Radio để đảm bảo hiển thị 100% không lỗi ẩn
-        menu_quan_tri = st.radio(
-            "CHỌN CHỨC NĂNG QUẢN TRỊ:",
-            ["👥 Phê duyệt & Quản lý Giai cấp Nhân sự", "📦 Nhập thêm vật tư mới vào kho", "✏️ Chỉnh sửa thông tin / Xóa bỏ vật tư hiện tại"],
-            horizontal=True
-        )
+        # CHỨC NĂNG QUẢN LÝ NHÂN SỰ
+        st.subheader("👥 Phê duyệt & Quản lý Tài khoản Cấp dưới")
+        tai_khoan_hop_le = [u for u in st.session_state.users.keys() if u != st.session_state.current_user and st.session_state.users[u]["role"] != "1_creator"]
         
-        st.markdown("---")
-        
-        # --- MENU 1: PHÊ DUYỆT TÀI KHOẢN ---
-        if menu_quan_tri == "👥 Phê duyệt & Quản lý Giai cấp Nhân sự":
-            st.subheader("Bảng danh sách nhân sự hiện thời")
-            bang_hien_thi = []
-            for tk, thong_tin_tk in st.session_state.users.items():
-                bang_hien_thi.append({
-                    "Tài khoản hệ thống": tk,
-                    "Họ và tên thật": thong_tin_tk["name"],
+        if tai_khoan_hop_le:
+            tk_duoc_chon = st.selectbox("Chọn tài khoản nhân sự cần xử lý quyền:", options=tai_khoan_hop_le, key="sb_manage_staff")
+            thong_tin_sua = st.session_state.users[tk_duoc_chon]
+            role_sua = thong_tin_sua["role"]
+            
+            quyen_duyet = False
+            if cap_bac_hien_tai == "1_creator": quyen_duyet = True
+            elif cap_bac_hien_tai == "2_owner" and role_sua in ["3_admin", "4_staff"]: quyen_duyet = True
+            elif cap_bac_hien_tai == "3_admin" and role_sua == "4_staff": quyen_duyet = True
+                
+            if quyen_duyet:
+                chuyen_trang_thai = st.checkbox("Cho phép tài khoản này hoạt động đăng nhập", value=thong_tin_sua["active"], key=f"chk_active_{tk_duoc_chon}")
+                giai_cap_cho_phep = {"👁️ Nhân viên (STAFF)": "4_staff"}
+                if cap_bac_hien_tai in ["1_creator", "2_owner"]: giai_cap_cho_phep["🛠️ Quản lý (ADMIN)"] = "3_admin"
+                if cap_bac_hien_tai == "1_creator": giai_cap_cho_phep["💼 BOSS CHỦ CHỢ (OWNER)"] = "2_owner"
+                
+                ten_nhan_hien_tai = [k for k, v in giai_cap_cho_phep.items() if v == role_sua]
+                vi_tri_mac_dinh = list(giai_cap_cho_phep.keys()).index(ten_nhan_hien_tai) if ten_nhan_hien_tai else 0
