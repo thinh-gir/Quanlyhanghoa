@@ -49,15 +49,11 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.current_user = None
 
-# Khởi tạo khóa lưu trữ sản phẩm đang chọn bằng ngón tay
-if 'mobile_selected_mv' not in st.session_state:
-    st.session_state.mobile_selected_mv = None
-
 # ==========================================
-# 2. GIAO DIỆN ĐĂNG NHẬP (TỐI ƯU MOBILE)
+# 2. GIAO DIỆN ĐĂNG NHẬP TRỰC QUAN
 # ==========================================
 if not st.session_state.logged_in:
-    st.markdown("<h2 style='text-align: center; color: #0088cc;'>🏭 SMART-HUB HỒNG PHÁT</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #0088cc;'>🏭 HỆ THỐNG SMART-HUB HỒNG PHÁT</h2>", unsafe_allow_html=True)
     col_l1, col_l2 = st.columns(2)
     with col_l1:
         st.subheader("🔑 ĐĂNG NHẬP")
@@ -88,7 +84,7 @@ if not st.session_state.logged_in:
                 st.success("Đăng ký thành công! Hãy chờ cấp trên phê duyệt.")
 
 # ==========================================
-# 3. DASHBOARD ĐIỀU HÀNH CHÍNH THỨC (GIAO DIỆN PHẲNG DI ĐỘNG)
+# 3. DASHBOARD ĐIỀU HÀNH CHÍNH THỨC
 # ==========================================
 else:
     u_now = st.session_state.users[st.session_state.current_user]
@@ -101,7 +97,6 @@ else:
         if st.button("🚪 ĐĂNG XUẤT", type="secondary", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.current_user = None
-            st.session_state.mobile_selected_mv = None
             st.rerun()
     st.markdown("---")
     
@@ -119,15 +114,15 @@ else:
     st.markdown("---")
     
     # ==========================================
-    # CHỨC NĂNG SMART-SEARCH GÕ CHỮ CÁI THẢ PHÍM GỢI Ý ĐỘNG CHO MOBILE
+    # CHỨC NĂNG SMART-SEARCH GÕ CHỮ CÁI TỰ ĐỘNG THẢ GỢI Ý TỨ THÌ (NO ENTER)
     # ==========================================
-    st.markdown("### 🔍 MOBILE SMART SEARCH (Tìm kiếm chạm gợi ý siêu tốc trên điện thoại)")
-    
-    # Ô gõ chữ thuần tương thích 100% bàn phím ảo điện thoại di động
-    chu_cai_nhap = st.text_input("Gõ chữ cái đầu, tên sản phẩm hoặc quét mã vạch:", value="", key="mobile_keyboard_search").strip()
-    chu_cai_clean = loai_bo_dau_tieng_viet(chu_cai_nhap)
-    
-    if chu_cai_nhap:
+    st.markdown("### 🔍 SMART AUTO-SUGGESTIONS (Tìm kiếm gõ chữ thả gợi ý liền)")
+
+    # Sử dụng hộp chứa thông minh làm menu thả rớt tự động dưới chân ô tìm kiếm
+    with st.popover("👇 NHẤP VÀO ĐÂY ĐỂ GÕ CHỮ CÁI / XEM GỢI Ý ABC", use_container_width=True):
+        chu_cai_nhap = st.text_input("Gõ chữ cái đầu, tên hàng hoặc quét mã vạch (Danh sách ABC tự cập nhật bên dưới):", value="", key="inst_search").strip()
+        chu_cai_clean = loai_bo_dau_tieng_viet(chu_cai_nhap)
+        
         start_with = []
         contain_with = []
         
@@ -144,26 +139,17 @@ else:
         contain_with.sort(key=lambda x: x["ten"])
         ket_qua_goi_y = start_with + contain_with
         
-        if ket_qua_goi_y:
-            st.markdown("👇 *Chạm ngón tay vào tên hàng hóa dưới đây để định vị kệ:*")
-            
-            # Xuất kết quả thành các nút bấm Tag to, dễ bấm bằng ngón tay trên điện thoại
-            for item_goi_y in ket_qua_goi_y[:8]: # Hiển thị tối đa 8 gợi ý ABC tốt nhất phù hợp màn hình dọc di động
-                if st.button(f"📦 {item_goi_y['ten'].upper()} [MV: {item_goi_y['ma_vach']}]", key=f"mob_btn_{item_goi_y['ma_vach']}", use_container_width=True):
-                    st.session_state.mobile_selected_mv = item_goi_y['ma_vach']
+        # Hiển thị kết quả động tức thì ngay trong menu cuộn rớt khi sếp đang gõ phím
+        if chu_cai_nhap:
+            st.markdown(f"✨ *Gợi ý khớp cho từ khóa '{chu_cai_nhap}':*")
         else:
-            st.error("❌ Không tìm thấy hàng hóa nào khớp với chữ cái sếp gõ.")
+            st.markdown("📋 *Toàn bộ danh sách kho hàng (Xếp theo thứ tự ABC):*")
             
-    # Hiển thị bảng định vị mục tiêu khi chạm ngón tay chọn sản phẩm gợi ý
-    if st.session_state.mobile_selected_mv:
-        for sp in st.session_state.kho_hang:
-            if sp["ma_vach"] == st.session_state.mobile_selected_mv:
+        for item_goi_y in ket_qua_goi_y:
+            with st.container():
+                st.markdown(f"**📦 {item_goi_y['ten'].upper()}**")
+                st.markdown(f"📍 Vị trí kệ: `{item_goi_y['vi_tri']}` | Mã vạch: `{item_goi_y['ma_vach']}` | HSD: `{item_goi_y['ngay_hh']}`")
                 st.markdown("---")
-                st.markdown("<h4 style='color: #0088cc;'>📍 ĐỊNH VỊ VỊ TRÍ THÀNH CÔNG:</h4>", unsafe_allow_html=True)
-                st.info(f"📍 **VỊ TRÍ TRÊN KỆ KHO:** {sp['vi_tri']}\n\n🔹 **Tên mặt hàng:** {sp['ten'].upper()}\n\n🔹 **Mã vạch:** `{sp['ma_vach']}` | **Hạn bảo quản:** {sp['ngay_hh']}")
-                break
-    else:
-        st.info("💡 Mẹo di động: Chỉ cần nhập 1 vài chữ cái đầu (ví dụ: c, ch, b), hệ thống sẽ rớt nút bấm gợi ý ra ngay cho sếp chạm chọn.")
 
     st.markdown("---")
 
@@ -183,3 +169,16 @@ else:
             else:
                 st.session_state.kho_hang.append({"ten": add_name.upper(), "ma_vach": add_barcode, "ngay_sx": add_nsx, "ngay_hh": add_nhh, "vi_tri": add_loc})
                 luu_du_lieu_he_thong()
+                st.success(f"Đã cập nhật thành công sản phẩm {add_name.upper()}!")
+                st.rerun()
+        st.markdown("---")
+        
+        st.markdown("#### ✏️ Sửa đổi thông tin chi tiết / Xóa bỏ vật tư")
+        if st.session_state.kho_hang:
+            for idx, item in enumerate(st.session_state.kho_hang):
+                col_e1, col_e2, col_e3, col_btn1, col_btn2 = st.columns(5)
+                with col_e1: e_name = st.text_input(f"Tên hàng #{idx+1}", value=item["ten"], key=f"we_name_{idx}").strip()
+                with col_e2: e_bar = st.text_input(f"Mã vạch #{idx+1}", value=item["ma_vach"], key=f"we_bar_{idx}").strip()
+                with col_e3: e_loc = st.text_input(f"Vị trí kệ #{idx+1}", value=item["vi_tri"], key=f"we_loc_{idx}").strip()
+                with col_btn1:
+                    if st.button("LƯU", key=f"w_save_btn_{idx}", use_container_width=True):
